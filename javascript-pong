@@ -1,0 +1,158 @@
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const WIDTH = 800;
+const HEIGHT = 600;
+const PADDLE_WIDTH = 12;
+const PADDLE_HEIGHT = 90;
+const BALL_RADIUS = 9;
+const BALL_SPEED = 3.5;
+const AI_SPEED = 3.8;
+
+let ball = {
+    x: WIDTH / 2,
+    y: HEIGHT / 2,
+    vx: BALL_SPEED,
+    vy: 2.5
+};
+
+let leftPaddle = {
+    x: 40,
+    y: HEIGHT / 2 - PADDLE_HEIGHT / 2,
+    width: PADDLE_WIDTH,
+    height: PADDLE_HEIGHT
+};
+
+let rightPaddle = {
+    x: WIDTH - 40 - PADDLE_WIDTH,
+    y: HEIGHT / 2 - PADDLE_HEIGHT / 2,
+    width: PADDLE_WIDTH,
+    height: PADDLE_HEIGHT
+};
+
+let scoreLeft = 0;
+let scoreRight = 0;
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseY = e.clientY - rect.top;
+
+    leftPaddle.y = mouseY - leftPaddle.height / 2;
+
+    if (leftPaddle.y < 0) leftPaddle.y = 0;
+    if (leftPaddle.y + leftPaddle.height > HEIGHT) {
+        leftPaddle.y = HEIGHT - leftPaddle.height;
+    }
+});
+
+function resetBall() {
+    ball.x = WIDTH / 2;
+    ball.y = HEIGHT / 2;
+
+    const direction = Math.random() > 0.5 ? 1 : -1;
+    ball.vx = direction * BALL_SPEED;
+
+    ball.vy = (Math.random() * 3.2 + 1) * (Math.random() > 0.5 ? 1 : -1);
+}
+
+function updateAI() {
+    const paddleCenter = rightPaddle.y + rightPaddle.height / 2;
+    const targetY = ball.y;
+
+    if (paddleCenter < targetY - 10) {
+        rightPaddle.y += AI_SPEED;
+    } else if (paddleCenter > targetY + 10) {
+        rightPaddle.y -= AI_SPEED;
+    }
+
+    if (rightPaddle.y < 0) rightPaddle.y = 0;
+    if (rightPaddle.y + rightPaddle.height > HEIGHT) {
+        rightPaddle.y = HEIGHT - rightPaddle.height;
+    }
+}
+
+function update() {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    if (ball.y - BALL_RADIUS < 0 || ball.y + BALL_RADIUS > HEIGHT) {
+        ball.vy = -ball.vy;
+        if (ball.y - BALL_RADIUS < 0) ball.y = BALL_RADIUS;
+        if (ball.y + BALL_RADIUS > HEIGHT) ball.y = HEIGHT - BALL_RADIUS;
+    }
+
+    if (ball.x - BALL_RADIUS < 0) {
+        scoreRight++;
+        resetBall();
+    }
+
+    if (ball.x + BALL_RADIUS > WIDTH) {
+        scoreLeft++;
+        resetBall();
+    }
+
+    if (ball.vx < 0 &&
+        ball.x - BALL_RADIUS < leftPaddle.x + leftPaddle.width &&
+        ball.x + BALL_RADIUS > leftPaddle.x &&
+        ball.y - BALL_RADIUS < leftPaddle.y + leftPaddle.height &&
+        ball.y + BALL_RADIUS > leftPaddle.y) {
+
+        ball.vx = -ball.vx;
+        const hitPoint = (ball.y - (leftPaddle.y + leftPaddle.height / 2)) / (leftPaddle.height / 2);
+        ball.vy = hitPoint * 3.5;
+    }
+
+    if (ball.vx > 0 &&
+        ball.x + BALL_RADIUS > rightPaddle.x &&
+        ball.x - BALL_RADIUS < rightPaddle.x + rightPaddle.width &&
+        ball.y - BALL_RADIUS < rightPaddle.y + rightPaddle.height &&
+        ball.y + BALL_RADIUS > rightPaddle.y) {
+
+        ball.vx = -ball.vx;
+        const hitPoint = (ball.y - (rightPaddle.y + rightPaddle.height / 2)) / (rightPaddle.height / 2);
+        ball.vy = hitPoint * 3.5;
+    }
+
+    updateAI();
+}
+
+function draw() {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([15, 15]);
+    ctx.beginPath();
+    ctx.moveTo(WIDTH / 2, 0);
+    ctx.lineTo(WIDTH / 2, HEIGHT);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 72px Segoe UI, Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(scoreLeft, WIDTH / 4, 90);
+    ctx.fillText(scoreRight, (3 * WIDTH) / 4, 90);
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(leftPaddle.x, leftPaddle.y, leftPaddle.width, leftPaddle.height);
+    ctx.fillRect(rightPaddle.x, rightPaddle.y, rightPaddle.width, rightPaddle.height);
+
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function init() {
+    resetBall();
+    gameLoop();
+}
+
+window.onload = init;
